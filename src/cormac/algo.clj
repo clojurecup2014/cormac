@@ -45,9 +45,56 @@
       io/reader
       line-seq))
 
-(defn parse-diff [lines]
-  ;; TODO
-  )
+;; (nth (parse-log "clojure" "clojurescript") 1207)
+
+(defn parse-hunk [hunk]
+  (let [[_ deletions inserts] (s/split hunk #" ")
+        [delete-start delete-length] (s/split deletions #",")
+        [inserts-start inserts-length] (s/split inserts #",")]
+    {:delete {:start (Long/parseLong (subs delete-start 1))
+              :length (if delete-length
+                        (Long/parseLong delete-length)
+                        1)}
+     :insert {:start (Long/parseLong (subs inserts-start 1))
+              :length (if inserts-length
+                        (Long/parseLong inserts-length)
+                        1)}}))
+
+(defn parse-chunk [[[hunk] lines]]
+  {:hunk (parse-hunk hunk)
+   ;; We don't need the changes for now..
+   ;; :lines lines
+   })
+
+(defn trim-filename [filename]
+  (let [filename (subs filename 4)]
+    (if (or (.startsWith filename "a/")
+            (.startsWith filename "b/"))
+      (subs filename 2)
+      filename)))
+
+(defn parse-chunks [[[from] [to & lines]]]
+  {:from (trim-filename from)
+   :to (trim-filename to)
+   :chunks (->> lines
+                (partition-by #(.startsWith % "@@"))
+                (partition 2)
+                (map parse-chunk))})
+
+(defn parse-diff [[_ lines]]
+  (->> lines
+       (partition-by #(.startsWith % "---"))
+       (drop 1)
+       (partition 2)
+       (map parse-chunks)))
+
+(defn parse-diffs [lines]
+  lines
+  (->> lines
+       (partition-by #(.startsWith % "diff --git"))
+       (partition 2)
+       (map parse-diff)
+       (map first)))
 
 (defn parse-commit [[[commit] lines]]
   (let [commit (subs commit 7)
@@ -59,7 +106,7 @@
      :author author
      :date date
      :commit-msg (s/trim (s/join "\n" (map s/trim commit-msg)))
-     :diff (parse-diff lines)}))
+     :diff (parse-diffs lines)}))
 
 (defn parse-log [user repo]
   (->> (git-log-cmd user repo)
@@ -69,6 +116,6 @@
        (map parse-commit)))
 
 (comment
-  (nth (parse-log "clojure" "clojurescript") 1205)
+  (nth (parse-log "clojure" "clojurescript") 1207)
 
   (take 10 (sh (git-log-cmd "clojure" "clojurescript"))))
