@@ -45,17 +45,10 @@
       io/reader
       line-seq))
 
-(->> (parse-log "clojure" "clojurescript")
-     (mapcat :diff)
-     (mapcat :chunks)
-     (map :hunk)
-     (filter #(and (every? (fn [k]
-                             (contains? (set (keys %)) k))
-                           [:edit :delete :insert])
-                   (< (-> % :insert :start) (-> % :delete :start))))
-     (take 50)
-)
 
+(comment
+  (nth (parse-log "clojure" "clojurescript")
+       1207))
 
 (defn resolve-overlap [{{delete-start :start delete-length :length} :delete
                         {insert-start :start insert-length :length} :insert
@@ -63,51 +56,115 @@
   (cond
    (or (nil? (:delete hunk))
        (nil? (:insert hunk)))
-   hunk
+   (into [] hunk)
 
+   ;; ++++
+   ;; ----
    (= (:delete hunk) (:insert hunk))
-   {:edit (:delete hunk)}
+   [[:edit (:delete hunk)]]
 
+   ;; +++
+   ;; ------
+   ;; or
+   ;; +++++
+   ;; ---
    (= delete-start insert-start)
    (if (< delete-length insert-length)
-     {:edit {:start delete-start
-             :length delete-length}
-      :insert {:start (+ delete-start delete-length)
-               :length (- insert-length delete-length)}}
-     {:edit {:start insert-start
-             :length insert-length}
-      :delete {:start (+ insert-start insert-length)
-               :length (- delete-length insert-length)}})
+     [[:edit {:start delete-start
+              :length delete-length}]
+      [:insert {:start (+ delete-start delete-length)
+                :length (- insert-length delete-length)}]]
+     [[:edit {:start insert-start
+              :length insert-length}]
+      [:delete {:start (+ insert-start insert-length)
+                :length (- delete-length insert-length)}]])
 
+   ;;   ++++++
+   ;; -----
    (< delete-start insert-start (+ delete-start delete-length) (+ insert-start insert-length))
    (let [new-delete-length (- insert-start delete-start)
          new-insert-start (+ delete-start delete-length)
          edit-start (+ delete-start new-delete-length)
          new-insert-length (- insert-length (- new-insert-start insert-start))
          edit-length (- new-insert-start edit-start)]
-     {:delete {:start delete-start
-               :length new-delete-length}
-      :insert {:start new-insert-start
-               :length new-insert-length}
-      :edit {:start edit-start
-             :length edit-length}})
+     [[:delete {:start delete-start
+                :length new-delete-length}]
+      [:insert {:start new-insert-start
+                :length new-insert-length}]
+      [:edit {:start edit-start
+              :length edit-length}]])
 
+   ;; +++++
+   ;;   -----
    (< insert-start delete-start (+ insert-start insert-length) (+ delete-start delete-length))
    (let [edit-start delete-start
          new-insert-length (- edit-start insert-start)
          new-delete-start (+ insert-start insert-length)
          new-delete-length (- (+ delete-start delete-length) new-delete-start)
          edit-length (- new-delete-start edit-start)]
-     {:insert {:start insert-start
-               :length new-insert-length}
-      :edit {:start edit-start
-             :length edit-length}
-      :delete {:start new-delete-start
-               :length new-delete-length}})
+     [[:insert {:start insert-start
+                :length new-insert-length}]
+      [:edit {:start edit-start
+              :length edit-length}]
+      [:delete {:start new-delete-start
+                :length new-delete-length}]])
+
+   ;;    ++++       =>
+   ;; ----------        ---^^^^---
+   (< delete-start insert-start (+ insert-start insert-length) (+ delete-start delete-length))
+   (let [edit-start insert-start
+         edit-length insert-length
+         left-delete-start delete-start
+         left-delete-length (- insert-start delete-start)
+         right-delete-start (+ insert-start insert-length)
+         right-delete-length (- (+ delete-start delete-length)
+                                (+ insert-start insert-length))]
+     [[:delete {:start left-delete-start
+                :length left-delete-length}]
+      [:edit {:start edit-start
+              :length edit-length}]
+      [:delete {:start right-delete-start
+                :length right-delete-length}]])
+
+   ;; ++++++++++    =>
+   ;;    ----           +++^^^^+++
+   (< insert-start delete-start (+ delete-start delete-length) (+ insert-start insert-length))
+   (let [edit-start delete-start
+         edit-length delete-length
+         left-insert-start insert-start
+         left-insert-length (- delete-start insert-start)
+         right-insert-start (+ delete-start delete-length)
+         right-insert-length (- (+ insert-start insert-length)
+                                right-insert-start)]
+     [[:insert-left {:start left-insert-start
+                     :length left-insert-length}]
+      [:edit {:start edit-start
+              :length edit-length}]
+      [:insert-right {:start right-insert-start
+                      :length right-insert-length}]])
+
+   ;; +++++++
+   ;;    ----   =>  +++^^^^
+   ;;   or
+   ;;    ++++
+   ;; -------   =>  ---^^^^
+   (= (+ insert-start insert-length) (+ delete-start delete-length))
+   (if (< insert-start delete-start)
+     [[:insert {:start insert-start
+               :length (- insert-length delete-length)}]
+      [:edit {:start delete-start
+             :length delete-length}]]
+     [[:delete {:start delete-start
+               :length (- delete-length insert-length)}]
+      [:edit {:start insert-start
+              :length insert-length}]])
+
    ;;(assert false hunk)
 
+   ;; +++
+   ;;      -----
    :else
-   hunk))
+   (into [] hunk)))
 
 
 
