@@ -63,6 +63,6 @@
     (p/html5
      [:div
       (for [l file-heatmap]
-       [:pre {:style (format "background-color: rgb(%s);" (str/join "," (color-temp 10 1 (:heat l))))} (:line l)])]))
+       [:pre {:style (format "margin:0; padding:0; background-color: rgb(%s);" (str/join "," (color-temp 10 1 (:heat l))))} (:line l)])]))
 
   )
