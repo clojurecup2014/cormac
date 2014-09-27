@@ -1,0 +1,41 @@
+[ 
+ {:db/id #db/id[:db.part/db]
+  :db/doc "URL from we clone/pull changes"
+  :db/ident :repo/uri
+  :db/unique :db.unique/value ;; implicit index
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db.install/_attribute :db.part/db}
+ 
+ {:db/id #db/id[:db.part/db]
+  :db/doc "Files part of the repo"
+  :db/ident :repo/files
+  :db/valueType :db.type/ref
+  :db/cardinality :db.cardinality/many
+  :db/isComponent true
+  :db.install/_attribute :db.part/db}
+ 
+ {:db/id #db/id[:db.part/db]
+  :db/doc "Full path starting from repo root"
+  :db/ident :file/path
+  :db/index true
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db.install/_attribute :db.part/db}
+ 
+ {:db/id #db/id[:db.part/db]
+  :db/doc "Commit sha1"
+  :db/ident :file/commit
+  :db/index true
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db.install/_attribute :db.part/db}
+ 
+  {:db/id #db/id[:db.part/db]
+  :db/doc "Serialized version of the vector heatmap"
+  :db/ident :file/heattmap
+  :db/valueType :db.type/string
+  :db/cardinality :db.cardinality/one
+  :db.install/_attribute :db.part/db}
+ 
+]
