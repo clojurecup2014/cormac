@@ -9,16 +9,6 @@
 
 (def datomic-uri "datomic:free://localhost:4334/cormac")
 
-(comment
-  
-  [:ul
-       (let [db (:db req)
-             data (q/qes '[:find ?e :where [?e :repo/uri]] db)]
-         (for [i data :let [repo (first i)]]
-           [:li [:a {:href (:repo/uri repo)} (:repo/uri repo)]]))]
-  
-  )
-
 (defn index [req]
   (r/response
     (p/html5
