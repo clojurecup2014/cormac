@@ -45,7 +45,79 @@
       io/reader
       line-seq))
 
-;; (nth (parse-log "clojure" "clojurescript") 1207)
+(->> (parse-log "clojure" "clojurescript")
+     (mapcat :diff)
+     (mapcat :chunks)
+     (map :hunk)
+     (filter #(and (every? (fn [k]
+                             (contains? (set (keys %)) k))
+                           [:edit :delete :insert])
+                   (< (-> % :insert :start) (-> % :delete :start))))
+     (take 50)
+)
+
+
+(defn resolve-overlap [{{delete-start :start delete-length :length} :delete
+                        {insert-start :start insert-length :length} :insert
+                        :as hunk}]
+  (cond
+   (or (nil? (:delete hunk))
+       (nil? (:insert hunk)))
+   hunk
+
+   (= (:delete hunk) (:insert hunk))
+   {:edit (:delete hunk)}
+
+   (= delete-start insert-start)
+   (if (< delete-length insert-length)
+     {:edit {:start delete-start
+             :length delete-length}
+      :insert {:start (+ delete-start delete-length)
+               :length (- insert-length delete-length)}}
+     {:edit {:start insert-start
+             :length insert-length}
+      :delete {:start (+ insert-start insert-length)
+               :length (- delete-length insert-length)}})
+
+   (< delete-start insert-start (+ delete-start delete-length) (+ insert-start insert-length))
+   (let [new-delete-length (- insert-start delete-start)
+         new-insert-start (+ delete-start delete-length)
+         edit-start (+ delete-start new-delete-length)
+         new-insert-length (- insert-length (- new-insert-start insert-start))
+         edit-length (- new-insert-start edit-start)]
+     {:delete {:start delete-start
+               :length new-delete-length}
+      :insert {:start new-insert-start
+               :length new-insert-length}
+      :edit {:start edit-start
+             :length edit-length}})
+
+   (< insert-start delete-start (+ insert-start insert-length) (+ delete-start delete-length))
+   (let [edit-start delete-start
+         new-insert-length (- edit-start insert-start)
+         new-delete-start (+ insert-start insert-length)
+         new-delete-length (- (+ delete-start delete-length) new-delete-start)
+         edit-length (- new-delete-start edit-start)]
+     {:insert {:start insert-start
+               :length new-insert-length}
+      :edit {:start edit-start
+             :length edit-length}
+      :delete {:start new-delete-start
+               :length new-delete-length}})
+   ;;(assert false hunk)
+
+   :else
+   hunk))
+
+
+
+
+
+(defn remove-length-zero [hunk]
+  (cond
+   (zero? (-> hunk :insert :length)) (dissoc hunk :insert)
+   (zero? (-> hunk :delete :length)) (dissoc hunk :delete)
+   :else hunk))
 
 (defn parse-hunk [hunk]
   (let [[_ deletions inserts] (s/split hunk #" ")
@@ -61,7 +133,7 @@
                         1)}}))
 
 (defn parse-chunk [[[hunk] lines]]
-  {:hunk (parse-hunk hunk)
+  {:hunk (resolve-overlap (remove-length-zero (parse-hunk hunk)))
    ;; We don't need the changes for now..
    ;; :lines lines
    })
