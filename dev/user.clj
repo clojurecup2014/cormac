@@ -3,7 +3,9 @@
             [clojure.string :as str]
             [clojure.pprint :refer (pprint)]
             [datomic.api :as d]
-            [cheshire.core :as json]))
+            [cheshire.core :as json]
+            [hiccup.core :as h]
+            [hiccup.page :as p]))
 (comment
   
   (def datomic-uri "datomic:free://localhost:4334/cormac")
@@ -48,4 +50,19 @@
   (def file-content (str/split (slurp (io/file "/var/tmp/repos/clojure/clojure/antsetup.sh")) #"\n"))
 
   (def file-heatmap (map (fn [s n] {:line s :heat n}) file-content heatmap))
+
+  ;; from SO http://stackoverflow.com/a/18931093
+
+  (defn color-temp [max-val min-val actual]
+    (let [mid-val (/ (- max-val min-val) 2.0)]
+      (if (>= actual mid-val)
+        [255 (Math/round(* 255 (/ (- max-val actual) (- max-val mid-val)))) 0]
+        [(Math/round (* 255 (/ (- actual min-val) (- mid-val min-val)))) 255 0])))
+
+  (spit (io/file "/tmp/test.html")
+    (p/html5
+     [:div
+      (for [l file-heatmap]
+       [:pre {:style (format "background-color: rgb(%s);" (str/join "," (color-temp 10 1 (:heat l))))} (:line l)])]))
+
   )

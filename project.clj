@@ -9,4 +9,5 @@
                  [ring/ring-core "1.3.1"]
                  [com.datomic/datomic-free "0.9.4899"]
                  [http-kit "2.1.19"]
-                 [cheshire "5.3.1"]])
+                 [cheshire "5.3.1"]
+                 [hiccup "1.0.5"]])
