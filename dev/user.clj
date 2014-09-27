@@ -31,5 +31,18 @@
       :file/heatmap (json/generate-string [1 1 10 2 4 6 1 1])}])
   
   @(d/transact conn sample-tx)
-  
+
+  (def db (d/db conn))
+
+  (def file
+    (d/q '[:find ?e
+          :in $ ?r ?f
+          :where [?p :repo/uri ?r]
+                 [?p :repo/files ?e]
+                 [?e :file/path ?f]] db "https://github.com/clojure/clojure.git" "antsetup.sh"))
+
+  (def file2 (d/entity db (ffirst file)))
+
+  (prn (:file/heatmap file2))
+
   )
