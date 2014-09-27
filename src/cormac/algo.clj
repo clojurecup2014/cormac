@@ -1,5 +1,6 @@
 (ns cormac.algo
   (:require [clojure.java.io :as io]
+            [clojure.string :as s]
             [clojure.core.rrb-vector :as v]))
 
 (defn cut [v idx len]
@@ -44,5 +45,30 @@
       io/reader
       line-seq))
 
+(defn parse-diff [lines]
+  ;; TODO
+  )
+
+(defn parse-commit [[[commit] lines]]
+  (let [commit (subs commit 7)
+        [author date & lines] lines
+        author (subs author 8)
+        date (subs date 8)
+        [commit-msg lines] (split-with #(not (.startsWith % "diff")) lines)]
+    {:commit (subs commit 7)
+     :author author
+     :date date
+     :commit-msg (s/trim (s/join "\n" (map s/trim commit-msg)))
+     :diff (parse-diff lines)}))
+
+(defn parse-log [user repo]
+  (->> (git-log-cmd user repo)
+       sh
+       (partition-by #(.startsWith % "commit"))
+       (partition 2)
+       (map parse-commit)))
+
 (comment
+  (nth (parse-log "clojure" "clojurescript") 1205)
+
   (take 10 (sh (git-log-cmd "clojure" "clojurescript"))))
