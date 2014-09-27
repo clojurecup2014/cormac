@@ -6,5 +6,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.rrb-vector "0.0.11"]
                  [compojure "1.1.9"]
-                 [ring "1.3.1"] ;; TODO: change to only required libs
-                 [com.datomic/datomic-free "0.9.4899"]])
+                 [ring/ring-core "1.3.1"]
+                 [com.datomic/datomic-free "0.9.4899"]
+                 [http-kit "2.1.19"]
+                 [cheshire "5.3.1"]])
