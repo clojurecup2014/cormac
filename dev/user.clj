@@ -43,6 +43,9 @@
 
   (def file2 (d/entity db (ffirst file)))
 
-  (prn (:file/heatmap file2))
+  (def heatmap (json/parse-string (:file/heatmap file2)))
 
+  (def file-content (str/split (slurp (io/file "/var/tmp/repos/clojure/clojure/antsetup.sh")) #"\n"))
+
+  (def file-heatmap (map (fn [s n] {:line s :heat n}) file-content heatmap))
   )
