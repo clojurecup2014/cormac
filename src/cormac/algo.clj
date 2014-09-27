@@ -20,6 +20,7 @@
             (into [] (v/subvec v1 idx))))
 
 (defn map-part [v idx len f]
+;;  (println v idx len)
   (let [mv (v/vec (map inc (v/subvec v idx (+ idx len))))
         sv (cut v idx len)]
     (splice sv idx mv)))
@@ -308,20 +309,24 @@
                    (println "IOOBE")
                    hvs))))))
 
-;;  (count (get (build-heat-vectors (parse-log "clojure" "clojurescript")) "src/clj/cljs/analyzer.clj"))
+;;  (build-heat-vectors (parse-log "jonase" "cljsfiddle"))
 
-(splice  (vec-of 1073 1) 15 (vec-of 2 1))
+;; (splice  (vec-of 1073 1) 15 (vec-of 2 1))
 
 (defn update-heat-vectors [hvs diff]
-  (cond
-   (= (:from diff) "/dev/null")
-   (assoc hvs (:to diff) (v/vec (repeat (-> diff :chunks first :hunk first second :length) 1)))
+  (try (cond
+        (= (:from diff) "/dev/null")
+        (do
+          (assoc hvs (:to diff) (v/vec (repeat (-> diff :chunks first :hunk first second :length) 1))))
 
-   (= (:to diff) "/dev/null")
-   (dissoc hvs (:from diff))
+        (= (:to diff) "/dev/null")
+        (dissoc hvs (:from diff))
 
-   :else
-   (update-heat-vector-for hvs (:to diff) (:chunks diff))))
+        :else
+        (update-heat-vector-for hvs (:to diff) (:chunks diff)))
+       (catch IllegalArgumentException e
+         (println "IAE")
+         hvs)))
 
 (defn build-heat-vectors [commits]
   (reduce (fn [heat-vectors commit]
@@ -334,7 +339,7 @@
           commits))
 
 (comment
-  (set! *print-length* nil)
+  (set! *print-length* 10)
 
 
 
