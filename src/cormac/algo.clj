@@ -1,5 +1,6 @@
 (ns cormac.algo
   (:require [clojure.java.io :as io]
+            [clojure.string :as s]
             [clojure.core.rrb-vector :as v]))
 
 (defn cut [v idx len]
@@ -44,5 +45,149 @@
       io/reader
       line-seq))
 
+(->> (parse-log "clojure" "clojurescript")
+     (mapcat :diff)
+     (mapcat :chunks)
+     (map :hunk)
+     (filter #(and (every? (fn [k]
+                             (contains? (set (keys %)) k))
+                           [:edit :delete :insert])
+                   (< (-> % :insert :start) (-> % :delete :start))))
+     (take 50)
+)
+
+
+(defn resolve-overlap [{{delete-start :start delete-length :length} :delete
+                        {insert-start :start insert-length :length} :insert
+                        :as hunk}]
+  (cond
+   (or (nil? (:delete hunk))
+       (nil? (:insert hunk)))
+   hunk
+
+   (= (:delete hunk) (:insert hunk))
+   {:edit (:delete hunk)}
+
+   (= delete-start insert-start)
+   (if (< delete-length insert-length)
+     {:edit {:start delete-start
+             :length delete-length}
+      :insert {:start (+ delete-start delete-length)
+               :length (- insert-length delete-length)}}
+     {:edit {:start insert-start
+             :length insert-length}
+      :delete {:start (+ insert-start insert-length)
+               :length (- delete-length insert-length)}})
+
+   (< delete-start insert-start (+ delete-start delete-length) (+ insert-start insert-length))
+   (let [new-delete-length (- insert-start delete-start)
+         new-insert-start (+ delete-start delete-length)
+         edit-start (+ delete-start new-delete-length)
+         new-insert-length (- insert-length (- new-insert-start insert-start))
+         edit-length (- new-insert-start edit-start)]
+     {:delete {:start delete-start
+               :length new-delete-length}
+      :insert {:start new-insert-start
+               :length new-insert-length}
+      :edit {:start edit-start
+             :length edit-length}})
+
+   (< insert-start delete-start (+ insert-start insert-length) (+ delete-start delete-length))
+   (let [edit-start delete-start
+         new-insert-length (- edit-start insert-start)
+         new-delete-start (+ insert-start insert-length)
+         new-delete-length (- (+ delete-start delete-length) new-delete-start)
+         edit-length (- new-delete-start edit-start)]
+     {:insert {:start insert-start
+               :length new-insert-length}
+      :edit {:start edit-start
+             :length edit-length}
+      :delete {:start new-delete-start
+               :length new-delete-length}})
+   ;;(assert false hunk)
+
+   :else
+   hunk))
+
+
+
+
+
+(defn remove-length-zero [hunk]
+  (cond
+   (zero? (-> hunk :insert :length)) (dissoc hunk :insert)
+   (zero? (-> hunk :delete :length)) (dissoc hunk :delete)
+   :else hunk))
+
+(defn parse-hunk [hunk]
+  (let [[_ deletions inserts] (s/split hunk #" ")
+        [delete-start delete-length] (s/split deletions #",")
+        [inserts-start inserts-length] (s/split inserts #",")]
+    {:delete {:start (Long/parseLong (subs delete-start 1))
+              :length (if delete-length
+                        (Long/parseLong delete-length)
+                        1)}
+     :insert {:start (Long/parseLong (subs inserts-start 1))
+              :length (if inserts-length
+                        (Long/parseLong inserts-length)
+                        1)}}))
+
+(defn parse-chunk [[[hunk] lines]]
+  {:hunk (resolve-overlap (remove-length-zero (parse-hunk hunk)))
+   ;; We don't need the changes for now..
+   ;; :lines lines
+   })
+
+(defn trim-filename [filename]
+  (let [filename (subs filename 4)]
+    (if (or (.startsWith filename "a/")
+            (.startsWith filename "b/"))
+      (subs filename 2)
+      filename)))
+
+(defn parse-chunks [[[from] [to & lines]]]
+  {:from (trim-filename from)
+   :to (trim-filename to)
+   :chunks (->> lines
+                (partition-by #(.startsWith % "@@"))
+                (partition 2)
+                (map parse-chunk))})
+
+(defn parse-diff [[_ lines]]
+  (->> lines
+       (partition-by #(.startsWith % "---"))
+       (drop 1)
+       (partition 2)
+       (map parse-chunks)))
+
+(defn parse-diffs [lines]
+  lines
+  (->> lines
+       (partition-by #(.startsWith % "diff --git"))
+       (partition 2)
+       (map parse-diff)
+       (map first)))
+
+(defn parse-commit [[[commit] lines]]
+  (let [commit (subs commit 7)
+        [author date & lines] lines
+        author (subs author 8)
+        date (subs date 8)
+        [commit-msg lines] (split-with #(not (.startsWith % "diff")) lines)]
+    {:commit (subs commit 7)
+     :author author
+     :date date
+     :commit-msg (s/trim (s/join "\n" (map s/trim commit-msg)))
+     :diff (parse-diffs lines)}))
+
+(defn parse-log [user repo]
+  (->> (git-log-cmd user repo)
+       sh
+       (partition-by #(.startsWith % "commit"))
+       (partition 2)
+       (map parse-commit)))
+
 (comment
+  (nth (parse-log "clojure" "clojurescript") 1207)
+
   (take 10 (sh (git-log-cmd "clojure" "clojurescript"))))
