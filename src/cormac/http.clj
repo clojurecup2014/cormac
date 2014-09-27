@@ -5,7 +5,8 @@
     [hiccup.page :as p]
     [hiccup.form :as f]
     [cormac.query :as q]
-    [datomic.api :as d]))
+    [datomic.api :as d])
+  (:import java.net.URLEncoder))
 
 (def datomic-uri "datomic:free://localhost:4334/cormac")
 
@@ -24,23 +25,43 @@
          [:div {:class "form-group"}
           [:label {:for "uri"} "Submit your repo - Repository URL"]
           [:input {:type "text" :class "form-control" :id "uri" :placeholder "e.g. https://github.com/clojurecup2014/cormac.git"}]]
-         [:button {:type "submit" :class "btn btn-primary btn-lg"} "Heatmap"]]]]
+         [:button {:type "submit" :class "btn btn-primary btn-lg"} "Submit"]]]]
       [:div {:style "height: 20px;"}]
       [:div
-       [:div [:p {:class "bg-info"}"Analyzed repos"]]
+       [:div [:p {:class "bg-info"} "Analyzed repos"]]
        [:div
         [:ul
          (let [db (:db req)
                data (q/qes '[:find ?e :where [?e :repo/uri]] db)]
            (for [i data :let [repo (first i)]]
-             [:li [:a {:href (:repo/uri repo)} (:repo/uri repo)]]))]]]])))
+             [:li [:a {:href (format "/report/%s/" (URLEncoder/encode (:repo/uri repo) "UTF-8"))} (:repo/uri repo)]]))]]]])))
+
+(defn repo-files [repo req]
+  (prn repo)
+  (r/response
+    (p/html5
+      (p/include-css "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css")
+      [:div {:class "container"}
+       [:div [:p {:class "bg-info"} "Files"]]
+       [:ul
+        (let [db (:db req)
+              data (q/qes '[:find ?e
+                            :in $ ?r
+                            :where [?p :repo/uri ?r]
+                                   [?p :repo/files ?e]] db repo)]
+          (for [i data :let [file (first i)]]
+            [:li [:a {:href "#"} (:file/path file)]]))]])))
 
 (defroutes main-routes
   
   (GET "/" req
     (index req))
   
-  )
+  (context "/report/:repo" [repo]
+    (GET "/" req
+      (repo-files repo req)))
+
+)
 
 
 ;; From https://gist.github.com/bobby/3150938
