@@ -38,7 +38,7 @@
         [:ul
          (let [db (:db req)
                data (q/qes '[:find ?e :where [?e :repo/uri]] db)]
-           (for [i data :let [repo (first i)]]
+           (for [i data :let [repo (first i)] :when (:repo/files repo)]
              [:li [:a {:href (format "/repo/%s/" (str (:repo/id repo)))} (:repo/uri repo)]]))]]]])))
 
 (defn repo-files [id req]
