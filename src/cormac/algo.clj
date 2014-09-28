@@ -344,16 +344,18 @@
           []
           commits))
 
-(defn build-tx* [{:keys [commit heatvecs]} repo-uuid]
+(defn build-tx* [{:keys [commit heatvecs]} repo-uuid repo-db-id]
   (for [[file hv] heatvecs]
     {:db/id (d/tempid :db.part/user)
+     :repo/_files repo-db-id
      :file/commit commit
      :file/path (str repo-uuid "/" file)
-     :file/heatmap (json/generate-string hv)})
-  )
+     :file/heatmap (json/generate-string hv)}))
 
-(defn build-tx [repo-uuid]
-  (build-tx* (last (build-heat-vectors (parse-log repo-uuid))) repo-uuid))
+(defn build-tx [repo-uuid repo-db-id]
+  (build-tx* (last (build-heat-vectors (parse-log repo-uuid)))
+             repo-uuid
+             repo-db-id))
 
 ;; (build-tx "clojure/clojure")
 
