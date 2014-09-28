@@ -7,8 +7,7 @@
             [hiccup.core :as h]
             [hiccup.page :as p]
             [hiccup.util :refer (escape-html)]
-            [cormac.algo :as algo])
-  (:import java.util.UUID))
+            [cormac.algo :as algo]))
 
 (comment
 
@@ -29,7 +28,7 @@
 
   (def sample-tx
     [{:db/id #db/id[:db.part/user -1]
-      :repo/id (UUID/randomUUID)
+      :repo/id (d/squuid)
       :repo/uri "https://github.com/clojure/clojure.git"
       :repo/files #db/id[:db.part/user -2]}
 

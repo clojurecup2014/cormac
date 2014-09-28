@@ -6,7 +6,7 @@
     [hiccup.form :as f]
     [cormac.query :as q]
     [datomic.api :as d])
-  (:import java.net.URLEncoder))
+  (:import java.util.UUID))
 
 (def datomic-uri "datomic:free://localhost:4334/cormac")
 
@@ -34,10 +34,9 @@
          (let [db (:db req)
                data (q/qes '[:find ?e :where [?e :repo/uri]] db)]
            (for [i data :let [repo (first i)]]
-             [:li [:a {:href (format "/report/%s/" (URLEncoder/encode (:repo/uri repo) "UTF-8"))} (:repo/uri repo)]]))]]]])))
+             [:li [:a {:href (format "/repo/%s/" (str (:repo/id repo)))} (:repo/uri repo)]]))]]]])))
 
-(defn repo-files [repo req]
-  (prn repo)
+(defn repo-files [id req]
   (r/response
     (p/html5
       (p/include-css "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css")
@@ -46,9 +45,9 @@
        [:ul
         (let [db (:db req)
               data (q/qes '[:find ?e
-                            :in $ ?r
-                            :where [?p :repo/uri ?r]
-                                   [?p :repo/files ?e]] db repo)]
+                            :in $ ?id
+                            :where [?p :repo/id ?id]
+                                   [?p :repo/files ?e]] db (UUID/fromString id))]
           (for [i data :let [file (first i)]]
             [:li [:a {:href "#"} (:file/path file)]]))]])))
 
@@ -57,9 +56,9 @@
   (GET "/" req
     (index req))
   
-  (context "/report/:repo" [repo]
+  (context "/repo/:id" [id]
     (GET "/" req
-      (repo-files repo req)))
+      (repo-files id req)))
 
 )
 
