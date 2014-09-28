@@ -346,7 +346,7 @@
 
 (defn build-tx* [{:keys [commit heatvecs]} repo-uuid]
   (for [[file hv] heatvecs]
-    {:db/id (d/tempid :db/user)
+    {:db/id (d/tempid :db.part/user)
      :file/commit commit
      :file/path (str repo-uuid "/" file)
      :file/heatmap (json/generate-string hv)})
