@@ -60,18 +60,44 @@
   (defn color-temp [max-val min-val actual]
     (let [mid-val (/ (- max-val min-val) 2.0)]
       (if (>= actual mid-val)
-        [255 (Math/round(* 255 (/ (- max-val actual) (- max-val mid-val)))) 0]
-        [(Math/round (* 255 (/ (- actual min-val) (- mid-val min-val)))) 255 0])))
+        [255 (Math/round(* 255 (/ (- max-val actual) (- max-val mid-val)))) 64]
+        [(Math/round (* 255 (/ (- actual min-val) (- mid-val min-val)))) 255 200])))
+
+  ;; Interpolate from white -> red
+  ;; v is a number between 0 and 1
+  (defn color-temp2 [v]
+    (let [r (+ 128 (* 127 v))
+          g (* 255 (- 1 v))
+          b (* 255 (- 1 v))]
+      (mapv #(Math/round %) [r g b])
+      ))
+
+  (defn white->red [v]
+    (let [n (Math/round (* 255 (- 1 v)))]
+      [255 n n]))
+
+  (defn rainbow [v]
+    (let [n (Math/round (* 255 v))]
+      (cond
+       (< v 1/4) [255 (- 255 n) 0]
+       (< v 1/2) [(- 255 n) 255 0]
+       (< v 3/4) [0 n (- 255 n)]
+       :else     [0 n 255])))
 
   (defn make-heatmap [file-heatmap]
-    (spit (io/file "/tmp/test.html")
-    (p/html5
-     [:div
-      (for [l file-heatmap]
-        [:pre {:style (format "margin:0; padding:0; background-color: rgb(%s);"
-                              (str/join "," (color-temp 10 1 (:heat l))))}
-         (escape-html (:line l))])])))
+    (let [max-heat (apply max (map :heat file-heatmap))]
+      (spit (io/file "/tmp/test.html")
+            (p/html5
+             [:div
+              (for [l file-heatmap]
+                [:pre {:style (format "margin:0; padding:0; background-color: rgb(%s);"
+                                      (str/join "," (white->red (float (/ (dec (:heat l)) max-heat)))
+                                                ;;(color-temp max-heat 1 (:heat l))
+                                                ))}
+                 (escape-html (:line l))])]))))
 
   (let [heat-vector (get  (algo/build-heat-vectors  (algo/parse-log "clojure" "clojurescript")) "src/cljs/cljs/reader.cljs")
         lines (line-seq  (io/reader "/var/tmp/repos/clojure/clojurescript/src/cljs/cljs/reader.cljs"))]
-    (make-heatmap (map (fn [s n] {:line s :heat n}) lines heat-vector))))
+    (make-heatmap (map (fn [s n] {:line s :heat n}) lines heat-vector)))
+
+)
