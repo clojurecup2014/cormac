@@ -10,5 +10,7 @@
                  [com.datomic/datomic-free "0.9.4899"]
                  [http-kit "2.1.19"]
                  [cheshire "5.3.1"]
-                 [hiccup "1.0.5"]]
-  :profiles {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]]}})
+                 [hiccup "1.0.5"]
+                 [javax.servlet/servlet-api "2.5"]]
+  :main cormac.core
+  :aot [cormac.core])

@@ -1,6 +1,7 @@
 (ns cormac.core
   (:require [cormac.http :as http]
-    [org.httpkit.server :refer (run-server)]))
+    [org.httpkit.server :refer (run-server)])
+  (:gen-class))
 
 (defonce server (atom nil))
 
