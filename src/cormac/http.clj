@@ -3,6 +3,7 @@
     [cormac.heatmap :as heatmap :only (build)]
     [compojure.core :refer (GET POST defroutes context)]
     [compojure.handler :refer (api)]
+    [compojure.route :refer (resources)]
     [ring.util.response :as r]
     [hiccup.core :as h]
     [hiccup.page :as p]
@@ -147,7 +148,7 @@
     (GET "/*" [id :as r]
       (file-map id r)))
 
-)
+  (resources "/public"))
 
 
 ;; From https://gist.github.com/bobby/3150938
