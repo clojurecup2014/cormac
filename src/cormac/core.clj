@@ -1,6 +1,8 @@
 (ns cormac.core
   (:require [cormac.http :as http]
-    [org.httpkit.server :refer (run-server)])
+    [clojure.java.io :as io :only (resource)]
+    [org.httpkit.server :refer (run-server)]
+    [datomic.api :as d])
   (:gen-class))
 
 (defonce server (atom nil))
@@ -11,6 +13,10 @@
     (reset! server nil)))
 
 (defn -main []
-  (reset! server (run-server #'http/app {:port 8080})))
+  (let [uri "datomic:free://localhost:4334/cormac"
+        schema (read-string (slurp (io/resource "cormac/schema.edn")))]
+    (d/create-database uri)
+    @(d/transact (d/connect uri) schema)
+    (reset! server (run-server #'http/app {:port 8080}))))
 
 ;; (-main)
