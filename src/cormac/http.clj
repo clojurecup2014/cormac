@@ -21,7 +21,7 @@
 (defn index [req]
   (r/response
     (p/html5
-      [:head 
+      [:head
        [:title "Welcome to cormac"]]
       (p/include-css "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css")
       [:div {:class "container"}
@@ -105,22 +105,30 @@
          (if tx-data
            @(d/transact (:conn req) tx-data))
           (r/response "OK"))
-        (let [repo-id (d/squuid)
-              tx-data [{:db/id (d/tempid :db.part/user)
-                        :repo/uri uri
-                        :repo/id repo-id}]
-              result @(d/transact (:conn req) tx-data)
-              clone (shell/with-sh-dir "/var/tmp/repos/" (shell/sh "git" "clone" uri (str repo-id)))]
-          (if (zero? (:exit clone))
-            (r/response "git clone succeed")
-            (r/response "git pull failed")))))
+        (do
+          (future
+            (let [repo-id (d/squuid)
+                  tempid (d/tempid :db.part/user)
+                  tx-data [{:db/id tempid
+                            :repo/uri uri
+                            :repo/id repo-id}]
+                  result @(d/transact (:conn req) tx-data)
+                  repo-db-id (d/resolve-tempid (:db-after result) (:tempids result) tempid)
+                  clone (shell/with-sh-dir "/var/tmp/repos/" (shell/sh "git" "clone" uri (str repo-id)))]
+              (if (zero? (:exit clone))
+                (let [tx-data (build-tx repo-id repo-db-id)]
+                  (if tx-data
+                    (do @(d/transact (:conn req) tx-data)
+                        (r/response "git clone succeed"))))
+                (r/response "git pull failed"))))
+          (r/response "go back to the front page, wait patiantly, and refresh!"))))
     (invalid-url)))
 
 (defroutes main-routes
-  
+
   (GET "/" req
     (index req))
-  
+
   (POST "/analyze" [uri :as req]
     (analyze uri req))
 
