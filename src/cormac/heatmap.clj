@@ -13,7 +13,7 @@
   (let [max-heat (apply max (map :heat file-heatmap))]
     [:div
      (for [l file-heatmap]
-       [:pre {:style (format "margin:0; padding:0; background-color: rgb(%s);"
+       [:pre {:style (format "border-radius:0; border:0;margin:0; padding:0; background-color: rgb(%s);"
                              (str/join "," (white->red (float (/ (dec (:heat l)) max-heat)))))}
         (escape-html (:line l))])]))
 

@@ -1,5 +1,6 @@
 (ns cormac.http
   (:require [cormac.algo :refer (build-tx)]
+    [cormac.heatmap :as heatmap :only (build)]
     [compojure.core :refer (GET POST defroutes context)]
     [compojure.handler :refer (api)]
     [ring.util.response :as r]
@@ -11,7 +12,8 @@
     [datomic.api :as d]
     [clojure.java.io :as io]
     [clojure.string :refer (blank?)]
-    [clojure.java.shell :as shell])
+    [clojure.java.shell :as shell]
+    [cheshire.core :as json :only (parse-string)])
   (:import java.util.UUID java.net.URL))
 
 (def datomic-uri "datomic:free://localhost:4334/cormac")
@@ -58,9 +60,16 @@
                              path (.substring (:file/path file) 37)]]
             [:li [:a {:href (format "/repo/%s/%s" (-> file :repo/_files :repo/id) path)} path]]))]])))
 
+(defn heatmap [db file-path]
+  (try
+    (let [f (q/find-by db :file/path file-path)]
+      (json/parse-string (:file/heatmap f)))
+    (catch AssertionError _ [])))
+
 (defn file-map [repo-id req]
   (let [file-path (get-in req [:params :*])
-        content (line-seq  (io/reader (format "/var/tmp/repos/%s/%s" repo-id file-path)))]
+        content (slurp (io/reader (format "/var/tmp/repos/%s/%s" repo-id file-path)))
+        hm (heatmap (:db req) (format "%s/%s" repo-id file-path))]
     (r/response
      (p/html5
        (p/include-css "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css")
@@ -68,9 +77,7 @@
         [:div
          [:p {:class "bg-info"} file-path]]
         [:div
-         (for [l content]
-           [:pre {:style "border:0;margin:0;padding:0;"}
-            (escape-html l)])]]))))
+         (heatmap/build content hm)]]))))
 
 (defn invalid-url []
   (r/response "Please be a good citizen, use a valid Git repository url."))
