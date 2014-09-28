@@ -25,8 +25,8 @@
 
  {:db/id #db/id[:db.part/db]
   :db/doc "Full path starting from repo root"
-  :db/ident :file/path
-  :db/index true
+  :db/ident :file/path ;; remember to prefix the repo uuid
+  :db/unique :db.unique/identity ;; we want upserts
   :db/valueType :db.type/string
   :db/cardinality :db.cardinality/one
   :db.install/_attribute :db.part/db}
