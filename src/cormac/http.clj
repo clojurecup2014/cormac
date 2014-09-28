@@ -4,8 +4,10 @@
     [hiccup.core :as h]
     [hiccup.page :as p]
     [hiccup.form :as f]
+    [hiccup.util :refer (escape-html)]
     [cormac.query :as q]
-    [datomic.api :as d])
+    [datomic.api :as d]
+    [clojure.java.io :as io])
   (:import java.util.UUID))
 
 (def datomic-uri "datomic:free://localhost:4334/cormac")
@@ -49,7 +51,21 @@
                             :where [?p :repo/id ?id]
                                    [?p :repo/files ?e]] db (UUID/fromString id))]
           (for [i data :let [file (first i)]]
-            [:li [:a {:href "#"} (:file/path file)]]))]])))
+            [:li [:a {:href (format "/repo/%s/%s" (-> file :repo/_files :repo/id) (:file/path file))} (:file/path file)]]))]])))
+
+(defn file-map [repo-id req]
+  (let [file-path (get-in req [:params :*])
+        content (line-seq  (io/reader (format "/var/tmp/repos/%s/%s" repo-id file-path)))]
+    (r/response
+     (p/html5
+       (p/include-css "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css")
+       [:div {:class "container"}
+        [:div
+         [:p {:class "bg-info"} file-path]]
+        [:div
+         (for [l content]
+           [:pre {:style "border:0;margin:0;padding:0;"}
+            (escape-html l)])]]))))
 
 (defroutes main-routes
   
@@ -58,7 +74,9 @@
   
   (context "/repo/:id" [id]
     (GET "/" req
-      (repo-files id req)))
+      (repo-files id req))
+    (GET "/*" [id :as r]
+      (file-map id r)))
 
 )
 
