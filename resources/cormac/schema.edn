@@ -1,4 +1,4 @@
-[ 
+[
  {:db/id #db/id[:db.part/db]
   :db/doc "Repo unique id"
   :db/ident :repo/id
@@ -14,7 +14,7 @@
   :db/valueType :db.type/string
   :db/cardinality :db.cardinality/one
   :db.install/_attribute :db.part/db}
- 
+
  {:db/id #db/id[:db.part/db]
   :db/doc "Files part of the repo"
   :db/ident :repo/files
@@ -22,7 +22,7 @@
   :db/cardinality :db.cardinality/many
   :db/isComponent true
   :db.install/_attribute :db.part/db}
- 
+
  {:db/id #db/id[:db.part/db]
   :db/doc "Full path starting from repo root"
   :db/ident :file/path
@@ -30,7 +30,7 @@
   :db/valueType :db.type/string
   :db/cardinality :db.cardinality/one
   :db.install/_attribute :db.part/db}
- 
+
  {:db/id #db/id[:db.part/db]
   :db/doc "Commit sha1"
   :db/ident :file/commit
@@ -38,12 +38,12 @@
   :db/valueType :db.type/string
   :db/cardinality :db.cardinality/one
   :db.install/_attribute :db.part/db}
- 
+
   {:db/id #db/id[:db.part/db]
   :db/doc "Serialized version of the vector heatmap"
   :db/ident :file/heatmap
   :db/valueType :db.type/string
   :db/cardinality :db.cardinality/one
   :db.install/_attribute :db.part/db}
- 
+
 ]

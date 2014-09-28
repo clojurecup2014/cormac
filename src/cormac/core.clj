@@ -11,3 +11,5 @@
 
 (defn -main []
   (reset! server (run-server #'http/app {:port 8080})))
+
+;; (-main)

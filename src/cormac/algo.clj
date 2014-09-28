@@ -1,7 +1,8 @@
 (ns cormac.algo
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
-            [clojure.core.rrb-vector :as v]))
+            [clojure.core.rrb-vector :as v]
+            [cheshire.core :as json]))
 
 (defn cut [v idx len]
 ;;  (println idx len)
@@ -306,7 +307,7 @@
                          hvs
                          (reverse hunks))
                  (catch IndexOutOfBoundsException e
-                   (println "IOOBE")
+                   ;; (println "IOOBE")
                    hvs))))))
 
 ;;  (build-heat-vectors (parse-log "jonase" "cljsfiddle"))
@@ -325,18 +326,34 @@
         :else
         (update-heat-vector-for hvs (:to diff) (:chunks diff)))
        (catch IllegalArgumentException e
-         (println "IAE")
+         ;; (println "IAE")
          hvs)))
 
 (defn build-heat-vectors [commits]
-  (reduce (fn [heat-vectors commit]
+  (reduce (fn [commits commit]
             (assert (not (some nil? (:diff commit))) commit)
-            (reduce (fn [heat-vectors diff]
-                      (update-heat-vectors heat-vectors diff))
-                    heat-vectors
-                    (:diff commit)))
-          {}
+            (let [heatvecs (:heatvecs (last commits) {})]
+              (conj commits
+                    (assoc commit
+                      :heatvecs  (reduce (fn [heat-vectors diff]
+                                           (update-heat-vectors heat-vectors diff))
+                                         heatvecs
+                                         (:diff commit)))))
+            )
+          []
           commits))
+
+(defn build-tx [{:keys [commit heatvecs]}]
+  (for [[file hv] heatvecs]
+    {:file/commit commit
+     :file/path file
+     :file/heatmap (json/generate-string hv)})
+  )
+
+
+;; To get to the last commit do
+;;  (last (build-heat-vectors  (parse-log "clojure" "clojurescript")))
+;; (build-tx (last (build-heat-vectors  (parse-log "clojure" "clojurescript"))))
 
 (comment
   (set! *print-length* 10)
@@ -345,7 +362,7 @@
 
 
   (some #(empty? (:diff %)) (parse-log "clojure" "clojurescript"))
-  (last (parse-log "clojure" "clojurescript"))
+
 
   (take 10 (sh (git-log-cmd "clojure" "clojurescript"))))
 
