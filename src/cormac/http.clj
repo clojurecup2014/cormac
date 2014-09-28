@@ -1,5 +1,6 @@
 (ns cormac.http
-  (:require [compojure.core :refer (GET POST defroutes context)]
+  (:require [cormac.algo :refer (build-tx)]
+    [compojure.core :refer (GET POST defroutes context)]
     [compojure.handler :refer (api)]
     [ring.util.response :as r]
     [hiccup.core :as h]
@@ -53,8 +54,9 @@
                             :in $ ?id
                             :where [?p :repo/id ?id]
                                    [?p :repo/files ?e]] db (UUID/fromString id))]
-          (for [i data :let [file (first i)]]
-            [:li [:a {:href (format "/repo/%s/%s" (-> file :repo/_files :repo/id) (:file/path file))} (:file/path file)]]))]])))
+          (for [i data :let [file (first i)
+                             path (.substring (:file/path file) 37)]]
+            [:li [:a {:href (format "/repo/%s/%s" (-> file :repo/_files :repo/id) path)} path]]))]])))
 
 (defn file-map [repo-id req]
   (let [file-path (get-in req [:params :*])
@@ -90,10 +92,12 @@
           repo (find-repo db uri)]
       (if repo
         (let [pull (shell/with-sh-dir
-                     (format "/var/tmp/repos/%s" (:repo/id repo)) (shell/sh "git" "pull"))]
-          (if (zero? (:exit pull))
-            (r/response "git pull succeed")
-            (r/response "git pull failed")))
+                     (format "/var/tmp/repos/%s" (:repo/id repo)) (shell/sh "git" "pull"))
+              tx-data (if (zero? (:exit pull))
+                        (build-tx (:repo/id repo) (:db/id repo)))]
+         (if tx-data
+           @(d/transact (:conn req) tx-data))
+          (r/response "OK"))
         (let [repo-id (d/squuid)
               tx-data [{:db/id (d/tempid :db.part/user)
                         :repo/uri uri
