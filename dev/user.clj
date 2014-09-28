@@ -7,12 +7,14 @@
             [hiccup.core :as h]
             [hiccup.page :as p]
             [hiccup.util :refer (escape-html)]
-            [cormac.algo :as algo]))
+            [cormac.algo :as algo])
+  (:import java.util.UUID))
 
 (comment
 
   (def datomic-uri "datomic:free://localhost:4334/cormac")
 
+  (d/delete-database datomic-uri)
   (d/create-database datomic-uri)
 
   (def conn (d/connect datomic-uri))
@@ -27,6 +29,7 @@
 
   (def sample-tx
     [{:db/id #db/id[:db.part/user -1]
+      :repo/id (UUID/randomUUID)
       :repo/uri "https://github.com/clojure/clojure.git"
       :repo/files #db/id[:db.part/user -2]}
 
@@ -38,6 +41,12 @@
   @(d/transact conn sample-tx)
 
   (def db (d/db conn))
+
+  (def repo
+    (d/q '[:find ?r :in $ ?uri
+           :where [?r :repo/uri ?uri]] db "https://github.com/clojure/clojure.git"))
+
+  (d/touch (d/entity db (ffirst repo)))
 
   (def file
     (d/q '[:find ?e
