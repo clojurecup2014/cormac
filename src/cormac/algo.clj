@@ -344,13 +344,21 @@
           []
           commits))
 
+(defn average [coll]
+  (if (empty? coll)
+    0
+    (float (/ (apply + coll)
+              (count coll)))))
+
 (defn build-tx* [{:keys [commit heatvecs]} repo-uuid repo-db-id]
   (for [[file hv] heatvecs]
-    {:db/id (d/tempid :db.part/user)
-     :repo/_files repo-db-id
-     :file/commit commit
-     :file/path (str repo-uuid "/" file)
-     :file/heatmap (json/generate-string hv)}))
+    (let [avg (average hv)]
+      {:db/id (d/tempid :db.part/user)
+       :repo/_files repo-db-id
+       :file/commit commit
+       :file/path (str repo-uuid "/" file)
+       :file/heatmap (json/generate-string hv)
+       :file.heatmap/avg avg})))
 
 (defn build-tx [repo-uuid repo-db-id]
   (build-tx* (last (build-heat-vectors (parse-log repo-uuid)))

@@ -56,9 +56,12 @@
                             :in $ ?id
                             :where [?p :repo/id ?id]
                                    [?p :repo/files ?e]] db (UUID/fromString id))]
-          (for [i data :let [file (first i)
-                             path (.substring (:file/path file) 37)]]
-            [:li [:a {:href (format "/repo/%s/%s" (-> file :repo/_files :repo/id) path)} path]]))]])))
+          (let [entities (->> (map first data)
+                              (sort-by :file.heatmap/avg)
+                              reverse)]
+            (for [file entities
+                  :let [path (.substring (:file/path file) 37)]]
+              [:li [:a {:href (format "/repo/%s/%s" (-> file :repo/_files :repo/id) path)} path]])))]])))
 
 (defn heatmap [db file-path]
   (try
