@@ -101,13 +101,15 @@
     (let [db (:db req)
           repo (find-repo db uri)]
       (if repo
-        (let [pull (shell/with-sh-dir
-                     (format "/var/tmp/repos/%s" (:repo/id repo)) (shell/sh "git" "pull"))
-              tx-data (if (zero? (:exit pull))
-                        (build-tx (:repo/id repo) (:db/id repo)))]
-         (if tx-data
-           @(d/transact (:conn req) tx-data))
-          (r/response "OK"))
+        (do
+          (future
+            (let [pull (shell/with-sh-dir
+                         (format "/var/tmp/repos/%s" (:repo/id repo)) (shell/sh "git" "pull"))
+                  tx-data (if (zero? (:exit pull))
+                            (build-tx (:repo/id repo) (:db/id repo)))]
+              (if tx-data
+                @(d/transact (:conn req) tx-data))))
+          (r/response "We're pulling the latest version. Go back to the front page, wait patiently, and refresh!"))
         (do
           (future
             (let [repo-id (d/squuid)
@@ -124,7 +126,7 @@
                     (do @(d/transact (:conn req) tx-data)
                         (r/response "git clone succeed"))))
                 (r/response "git pull failed"))))
-          (r/response "go back to the front page, wait patiantly, and refresh!"))))
+          (r/response "Hey, new repo, thanks! Go back to the front page, wait patiently, and refresh!"))))
     (invalid-url)))
 
 (defroutes main-routes
