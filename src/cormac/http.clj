@@ -24,6 +24,7 @@
       [:head
        [:title "Welcome to cormac"]]
       (p/include-css "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css")
+      (p/include-css "/public/cormac.css")
       [:div {:class "container"}
        [:h1 "Welcome to cormac"]
       [:div
@@ -36,8 +37,8 @@
          [:button {:type "submit" :class "btn btn-primary btn-lg"} "Submit"]]]]
       [:div {:style "height: 20px;"}]
       [:div
-       [:div [:p {:class "bg-info"} "Analyzed repos"]]
-       [:div
+       [:div {:style "background: #fff;"}
+        [:p {:class "bg-info"} "Analyzed repos"]
         [:ul
          (let [db (:db req)
                data (q/qes '[:find ?e :where [?e :repo/uri]] db)]
@@ -48,9 +49,10 @@
   (r/response
     (p/html5
       (p/include-css "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css")
+      (p/include-css "/public/cormac.css")
       [:div {:class "container"}
-       [:div [:p {:class "bg-info"} "Files"]]
-       [:ul
+       [:p {:class "bg-info"} "Files"]
+       [:ul {:style "background: #fff;"}
         (let [db (:db req)
               data (q/qes '[:find ?e
                             :in $ ?id
@@ -76,6 +78,7 @@
     (r/response
      (p/html5
        (p/include-css "https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css")
+       (p/include-css "/public/cormac.css")
        [:div {:class "container"}
         [:div
          [:p {:class "bg-info"} file-path]]
