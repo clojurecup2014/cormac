@@ -27,6 +27,7 @@
       (p/include-css "/public/cormac.css")
       [:div {:class "container"}
        [:h1 "Welcome to cormac"]
+       [:p "More edits to a source file often implies that the code is tricky to get right, maybe due to a complex problem being solved. Is it useful to know when you have made changes to such a hot spot? So how about creating heat maps from git logs as an aid in code reviews?"]
       [:div
        [:div ""]
        [:div
