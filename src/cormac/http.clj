@@ -1,5 +1,6 @@
 (ns cormac.http
   (:require [compojure.core :refer (GET POST defroutes context)]
+    [compojure.handler :refer (api)]
     [ring.util.response :as r]
     [hiccup.core :as h]
     [hiccup.page :as p]
@@ -7,8 +8,10 @@
     [hiccup.util :refer (escape-html)]
     [cormac.query :as q]
     [datomic.api :as d]
-    [clojure.java.io :as io])
-  (:import java.util.UUID))
+    [clojure.java.io :as io]
+    [clojure.string :refer (blank?)]
+    [clojure.java.shell :as shell])
+  (:import java.util.UUID java.net.URL))
 
 (def datomic-uri "datomic:free://localhost:4334/cormac")
 
@@ -26,7 +29,7 @@
         [:form {:method "post" :action "/analyze" :role "form"}
          [:div {:class "form-group"}
           [:label {:for "uri"} "Submit your repo - Repository URL"]
-          [:input {:type "text" :class "form-control" :id "uri" :placeholder "e.g. https://github.com/clojurecup2014/cormac.git"}]]
+          [:input {:type "text" :class "form-control" :name "uri" :id "uri" :placeholder "e.g. https://github.com/clojurecup2014/cormac.git"}]]
          [:button {:type "submit" :class "btn btn-primary btn-lg"} "Submit"]]]]
       [:div {:style "height: 20px;"}]
       [:div
@@ -67,11 +70,37 @@
            [:pre {:style "border:0;margin:0;padding:0;"}
             (escape-html l)])]]))))
 
+(defn invalid-url []
+  (r/response "Please be a good citizen, use a valid Git repository url."))
+
+(defn valid-url? [uri]
+  (boolean
+    (try
+      (.toURI (URL. uri))
+      (catch Exception _))))
+
+(defn find-repo [db uri]
+  (try
+    (q/find-by db :repo/uri uri)
+    (catch AssertionError _)))
+
+(defn analyze [uri req]
+  (if (valid-url? uri)
+    (let [db (:db req)
+          repo (find-repo db uri)]
+      (if repo
+        (r/response "already cloned")
+        (r/response "we need to clone")))
+    (invalid-url)))
+
 (defroutes main-routes
   
   (GET "/" req
     (index req))
   
+  (POST "/analyze" [uri :as req]
+    (analyze uri req))
+
   (context "/repo/:id" [id]
     (GET "/" req
       (repo-files id req))
@@ -96,4 +125,6 @@
 
 
 (def app
-  (wrap-datomic main-routes datomic-uri))
+  (-> main-routes
+    (wrap-datomic datomic-uri)
+    (api)))
