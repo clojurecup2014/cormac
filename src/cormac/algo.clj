@@ -2,6 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
             [clojure.core.rrb-vector :as v]
+            [datomic.api :as d]
             [cheshire.core :as json]))
 
 (defn cut [v idx len]
@@ -46,11 +47,11 @@
 
 (def repo-root "/var/tmp/repos")
 
-(defn repo-uri [user repo]
-  (str repo-root "/" user "/" repo))
+(defn repo-uri [repo-uuid]
+  (str repo-root "/" repo-uuid))
 
-(defn git-log-cmd [user repo]
-  (let [uri (repo-uri user repo)]
+(defn git-log-cmd [repo-uuid]
+  (let [uri (repo-uri repo-uuid)]
     (format "git --git-dir=%s/.git --work-tree=%s log --reverse --no-merges -p --unified=0"
              uri
              uri)))
@@ -64,7 +65,7 @@
 
 
 (comment
-  (nth (parse-log "clojure" "clojurescript")
+  (nth (parse-log "clojure/clojurescript")
        1207))
 
 (defn resolve-overlap [{{delete-start :start delete-length :length} :delete
@@ -258,8 +259,8 @@
       res)
     ))
 
-(defn parse-log [user repo]
-  (->> (git-log-cmd user repo)
+(defn parse-log [repo-uuid]
+  (->> (git-log-cmd repo-uuid)
        sh
        (partition-by #(.startsWith % "commit"))
        (partition 2)
@@ -343,17 +344,19 @@
           []
           commits))
 
-(defn build-tx [{:keys [commit heatvecs]}]
+(defn build-tx* [{:keys [commit heatvecs]} repo-uuid]
   (for [[file hv] heatvecs]
-    {:file/commit commit
-     :file/path file
+    {:db/id (d/tempid :db/user)
+     :file/commit commit
+     :file/path (str repo-uuid "/" file)
      :file/heatmap (json/generate-string hv)})
   )
 
+(defn build-tx [repo-uuid]
+  (build-tx* (last (build-heat-vectors (parse-log repo-uuid))) repo-uuid))
 
-;; To get to the last commit do
-;;  (last (build-heat-vectors  (parse-log "clojure" "clojurescript")))
-;; (build-tx (last (build-heat-vectors  (parse-log "clojure" "clojurescript"))))
+;; (build-tx "clojure/clojure")
+
 
 (comment
   (set! *print-length* 10)
