@@ -38,7 +38,7 @@
         [:ul
          (let [db (:db req)
                data (q/qes '[:find ?e :where [?e :repo/uri]] db)]
-           (for [i data :let [repo (first i)]]
+           (for [i data :let [repo (first i)] :when (:repo/files repo)]
              [:li [:a {:href (format "/repo/%s/" (str (:repo/id repo)))} (:repo/uri repo)]]))]]]])))
 
 (defn repo-files [id req]
@@ -89,8 +89,20 @@
     (let [db (:db req)
           repo (find-repo db uri)]
       (if repo
-        (r/response "already cloned")
-        (r/response "we need to clone")))
+        (let [pull (shell/with-sh-dir
+                     (format "/var/tmp/repos/%s" (:repo/id repo)) (shell/sh "git" "pull"))]
+          (if (zero? (:exit pull))
+            (r/response "git pull succeed")
+            (r/response "git pull failed")))
+        (let [repo-id (d/squuid)
+              tx-data [{:db/id (d/tempid :db.part/user)
+                        :repo/uri uri
+                        :repo/id repo-id}]
+              result @(d/transact (:conn req) tx-data)
+              clone (shell/with-sh-dir "/var/tmp/repos/" (shell/sh "git" "clone" uri (str repo-id)))]
+          (if (zero? (:exit clone))
+            (r/response "git clone succeed")
+            (r/response "git pull failed")))))
     (invalid-url)))
 
 (defroutes main-routes
